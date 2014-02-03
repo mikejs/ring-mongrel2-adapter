@@ -3,9 +3,8 @@
            (org.apache.commons.httpclient HttpStatus)
            (java.io File InputStream ByteArrayOutputStream
                     ByteArrayInputStream))
-  (:use clojure.contrib.json
-        [clojure.contrib.io :only (copy)]
-        [clojure.contrib.except :only (throwf)]))
+  (:use clojure.data.json
+        [clojure.java.io :only (copy)]))
 
 (defn- parse-netstring [s]
   (let [parts (.split s ":" 2)
@@ -66,7 +65,7 @@ and a map of HTTP headers."
                                            (.close body))
           (instance? File body) (copy body body-stream)
           (nil? body) 1
-          :else (throwf "Unrecognized body: %s" body))
+          :else (throw (Exception. (format "Unrecognized body: %s" body))))
     (copy (str "HTTP/1.1 " status " " phrase
                "\r\nContent-Length: " (.size body-stream)
                "\r\n" header-str "\r\n")
@@ -81,7 +80,7 @@ and a map of HTTP headers."
         recv-spec (or (:recv-spec options) "tcp://127.0.0.1:5566")
         send-spec (or (:send-spec options) "tcp://127.0.0.1:5565")]
     (.connect sub recv-spec)
-    (.setsockopt sub ZMQ/SUBSCRIBE "")
+    (.subscribe sub (.getBytes ""))
     (.connect pub send-spec)
     (while (not (.isInterrupted (Thread/currentThread)))
       (let [req (parse-m2-request (String. (.recv sub 0)))
